@@ -1,15 +1,12 @@
 package processor
 
-import "time"
-
-
 type MonitorData struct {
-	Id string
-	TimeStamp time.Time
-	Data map[string]interface{}
+	DeviceId     int64                    `json:"ID"`
+	DeviceStatus int8                     `json:"status"`
+	TimeStamp    string                   `json:"once"`
+	Data         []map[string]interface{} `json:"ProbeData"`
 }
 
-
-func Save(){
+func Save() {
 
 }

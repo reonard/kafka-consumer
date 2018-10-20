@@ -1,24 +1,24 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"kafka-consumer/consumer"
 	"kafka-consumer/db"
 	"kafka-consumer/processor"
 	"os"
 	"os/signal"
-	"time"
 )
 
 func main() {
 
-	kafkaBroker := []string{"127.0.0.1:9092"}
+	kafkaBroker := []string{"x:x"}
 	consumeTopics := []string{"test"}
 
 	kafkaConsumer := consumer.NewKafkaConsumer(kafkaBroker, "DT01", consumeTopics)
 	defer kafkaConsumer.Close()
 
-	s := db.InitDB("127.0.0.1:27017")
+	s := db.InitDB("x:x")
 	defer s.Close()
 
 	signals := make(chan os.Signal, 1)
@@ -31,9 +31,14 @@ func main() {
 		select {
 		case msg, ok := <-kafkaConsumer.Messages():
 			if ok {
-				dataProcessor.AddData(&processor.MonitorData{
-					TimeStamp: time.Now(),
-					Data:      map[string]interface{}{"value": string(msg.Value)}})
+				msgData := processor.MonitorData{}
+				err := json.Unmarshal(msg.Value, &msgData)
+				if err != nil {
+					fmt.Println("Invalid Data")
+					continue
+				}
+				dataProcessor.AddData(&msgData)
+
 				fmt.Fprintf(os.Stdout, "接收Kafka信息：主题-%s/分区-%d/偏移-%d\t消息-Key:%s\tValue:%s\n", msg.Topic, msg.Partition, msg.Offset, msg.Key, msg.Value)
 				kafkaConsumer.MarkOffset(msg, "") // mark message as processed
 			}
