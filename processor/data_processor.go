@@ -24,7 +24,7 @@ func (w *Worker) flushData() {
 	fmt.Printf("Worker %d Flushing Data \n", w.workerId)
 	s := db.GetSession()
 	defer s.Close()
-	c := s.DB("pilot").C("device1")
+	c := s.DB("pilot").C("metric_data")
 
 	if len(w.bulkData) == 0 {
 		fmt.Println("No data need to flushed")
