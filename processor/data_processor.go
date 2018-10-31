@@ -8,6 +8,14 @@ import (
 	"sync"
 )
 
+const (
+	STATUS_NORMAL = iota
+	STATUS_WARN
+	STATUS_ALARM
+	STATUS_OFFLINE
+	STATUS_ERROR
+)
+
 var wg sync.WaitGroup
 
 type Worker struct {
@@ -19,35 +27,51 @@ type Worker struct {
 	error         chan error
 }
 
-func (w *Worker) flushData() {
+func (w *Worker) flushData(collection string, data ...interface{}) {
 
-	fmt.Printf("Worker %d Flushing Data \n", w.workerId)
+	fmt.Printf("Worker %d Flushing %s Data \n", w.workerId, collection)
+
 	s := db.GetSession()
 	defer s.Close()
-	c := s.DB("pilot").C("metric_data")
+	c := s.DB("pilot").C(collection)
 
-	if len(w.bulkData) == 0 {
-		fmt.Println("No data need to flushed")
-		return
-	}
-
-	if err := c.Insert(w.bulkData...); err != nil {
+	if err := c.Insert(data...); err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	fmt.Printf(" %d Data Flushed \n", len(w.bulkData))
+	fmt.Printf(" %d %s Data Flushed \n", len(data), collection)
+
 }
 
-func (w *Worker) saveData(data ...*MonitorData) {
+func (w *Worker) saveAlarmData(monData *MonitorData) {
 
-	for _, dt := range data {
-		w.bulkData = append(w.bulkData, dt)
+	w.flushData("alarm_data", monData)
+}
+
+func (w *Worker) saveMonData(monData *MonitorData) {
+
+	w.bulkData = append(w.bulkData, monData)
+
+	// flush bulk data
+	if len(w.bulkData) >= w.maxDataBuffer {
+
+		w.flushData("metric_data", w.bulkData...)
+
+		w.bulkData = make([]interface{}, 0, w.maxDataBuffer)
 	}
 
-	if len(w.bulkData) >= w.maxDataBuffer {
-		w.flushData()
-		w.bulkData = make([]interface{}, 0, w.maxDataBuffer)
+}
+
+func (w *Worker) processData(data ...*MonitorData) {
+
+	for _, dt := range data {
+
+		w.saveMonData(dt)
+
+		if dt.DeviceStatus == STATUS_ALARM {
+			w.saveAlarmData(dt)
+		}
 	}
 }
 
@@ -60,11 +84,11 @@ Loop:
 		select {
 		case dt, ok := <-w.monData:
 			if ok {
-				w.saveData(dt...)
+				w.processData(dt...)
 			}
 		case <-w.signals:
 			fmt.Printf("Worker %d Received Signal, Flushing...\n", w.workerId)
-			w.flushData()
+			w.flushData("metric_data", w.bulkData...)
 			break Loop
 		}
 	}
