@@ -44,10 +44,10 @@ func (w *Worker) flushData(collection string, data ...interface{}) {
 
 }
 
-func (w *Worker) saveAlarmData(monData *MonitorData) {
-
-	w.flushData("alarm_data", monData)
-}
+//func (w *Worker) saveAlarmData(monData *MonitorData) {
+//
+//	w.flushData("alarm_data", monData)
+//}
 
 func (w *Worker) saveMonData(monData *MonitorData) {
 
@@ -69,9 +69,9 @@ func (w *Worker) processData(data ...*MonitorData) {
 
 		w.saveMonData(dt)
 
-		if dt.DeviceStatus == STATUS_ALARM {
-			w.saveAlarmData(dt)
-		}
+		//if dt.DeviceStatus == STATUS_ALARM {
+		//	w.saveAlarmData(dt)
+		//}
 	}
 }
 
@@ -82,6 +82,7 @@ func (w *Worker) Process() {
 Loop:
 	for {
 		select {
+
 		case dt, ok := <-w.monData:
 			if ok {
 				w.processData(dt...)
