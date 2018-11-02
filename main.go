@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"kafka-consumer/consumer"
 	"kafka-consumer/db"
+	. "kafka-consumer/lib"
 	"kafka-consumer/processor"
 	"os"
 	"os/signal"
@@ -12,19 +13,25 @@ import (
 
 func main() {
 
-	kafkaBroker := []string{"x:x"}
-	consumeTopics := []string{"test"}
+	InitCfg()
 
-	kafkaConsumer := consumer.NewKafkaConsumer(kafkaBroker, "DT01", consumeTopics)
+	kafkaConsumer := consumer.NewKafkaConsumer(
+		AppCfg.KafkaBrokers,
+		AppCfg.ConsumerGroupID,
+		AppCfg.MonDataTopics)
+
 	defer kafkaConsumer.Close()
 
-	s := db.InitDB("x:x")
+	s := db.InitMongoDB(AppCfg.MongodbURL)
 	defer s.Close()
+
+	m := db.InitMySQLDB(AppCfg.MySqlURL)
+	defer m.Close()
 
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, os.Interrupt)
 
-	dataProcessor := processor.NewProcessor(2)
+	dataProcessor := processor.NewProcessor(AppCfg.WorkerNum, AppCfg.BulkDataBuffer)
 	dataProcessor.Run()
 
 	for {

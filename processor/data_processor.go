@@ -5,6 +5,7 @@ import (
 	"kafka-consumer/db"
 	"os"
 	"os/signal"
+	"strconv"
 	"sync"
 )
 
@@ -69,9 +70,20 @@ func (w *Worker) processData(data ...*MonitorData) {
 
 		w.saveMonData(dt)
 
-		//if dt.DeviceStatus == STATUS_ALARM {
-		//	w.saveAlarmData(dt)
-		//}
+		unixTime, err := strconv.Atoi(dt.TimeStamp)
+		if err != nil {
+			fmt.Println("Atoi错误")
+			fmt.Println(unixTime)
+			continue
+		}
+		// 更新设备状态
+		err = db.ExecuteUpdate(
+			"UPDATE device SET device_status = ?, status_time = FROM_UNIXTIME(?) WHERE device_id = ? and status_time < FROM_UNIXTIME(?)",
+			dt.DeviceStatus, unixTime/1000, dt.DeviceId, unixTime/1000)
+
+		if err != nil {
+			fmt.Println(err)
+		}
 	}
 }
 
@@ -104,7 +116,7 @@ type MonitorDataProcessor struct {
 	signal  chan os.Signal
 }
 
-func NewProcessor(maxWorker int) MonitorDataProcessor {
+func NewProcessor(maxWorker int, maxBuffer int) MonitorDataProcessor {
 
 	p := MonitorDataProcessor{
 		monData: make(chan []*MonitorData),
@@ -117,7 +129,7 @@ func NewProcessor(maxWorker int) MonitorDataProcessor {
 		p.workers = append(p.workers,
 			&Worker{
 				workerId:      i,
-				maxDataBuffer: 1,
+				maxDataBuffer: maxBuffer,
 				monData:       p.monData,
 				signals:       make(chan os.Signal, 1)})
 	}

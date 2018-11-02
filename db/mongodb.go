@@ -4,7 +4,7 @@ import "github.com/globalsign/mgo"
 
 var session *mgo.Session
 
-func InitDB(url string) *mgo.Session{
+func InitMongoDB(url string) *mgo.Session {
 
 	var err error
 	session, err = mgo.Dial(url)
@@ -17,6 +17,6 @@ func InitDB(url string) *mgo.Session{
 	return session
 }
 
-func GetSession() *mgo.Session  {
+func GetSession() *mgo.Session {
 	return session.Copy()
 }
