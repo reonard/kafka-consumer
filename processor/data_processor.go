@@ -2,6 +2,8 @@ package processor
 
 import (
 	"fmt"
+	"github.com/globalsign/mgo/bson"
+	"github.com/patrickmn/go-cache"
 	"kafka-consumer/db"
 	"os"
 	"os/signal"
@@ -45,10 +47,30 @@ func (w *Worker) flushData(collection string, data ...interface{}) {
 
 }
 
-//func (w *Worker) saveAlarmData(monData *MonitorData) {
-//
-//	w.flushData("alarm_data", monData)
-//}
+func (w *Worker) UpsertData(collection string, query map[string]interface{}, set interface{}, insert interface{}) {
+
+	fmt.Printf("Worker %d update %s Data \n", w.workerId, collection)
+
+	s := db.GetSession()
+	defer s.Close()
+	c := s.DB("pilot").C(collection)
+
+	update := bson.M{"$set": set, "$setOnInsert": insert}
+
+	if _, err := c.Upsert(query, update); err != nil {
+		fmt.Println(err)
+		return
+	}
+
+}
+
+func (w *Worker) updateLastMonData(monData *MonitorData) {
+
+	w.UpsertData("last_metric",
+		map[string]interface{}{"deviceid": monData.DeviceId},
+		monData, monData)
+
+}
 
 func (w *Worker) saveMonData(monData *MonitorData) {
 
@@ -68,6 +90,23 @@ func (w *Worker) processData(data ...*MonitorData) {
 
 	for _, dt := range data {
 
+		var deviceInfo DeviceInfo
+		var err error
+
+		deviceCacheInfo, exists := db.InMemoryCache.Get(strconv.Itoa(int(dt.DeviceId)))
+		if !exists {
+			err, deviceInfo = GetDeviceInfo(dt.DeviceId)
+			if err != nil {
+				db.InMemoryCache.Set(strconv.Itoa(int(dt.DeviceId)), deviceInfo, cache.DefaultExpiration)
+			}
+		} else {
+			deviceInfo = deviceCacheInfo.(DeviceInfo)
+		}
+
+		dt.Project = deviceInfo.Project
+		dt.Customer = deviceInfo.Customer
+
+		w.updateLastMonData(dt)
 		w.saveMonData(dt)
 
 		unixTime, err := strconv.Atoi(dt.TimeStamp)

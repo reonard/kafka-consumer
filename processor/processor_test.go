@@ -15,6 +15,8 @@ func TestNewProcessor(t *testing.T) {
 
 	InitCfg()
 
+	db.InitCache()
+
 	s := db.InitMongoDB("127.0.0.1:27017")
 	defer s.Close()
 
