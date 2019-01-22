@@ -26,7 +26,7 @@ func TestNewProcessor(t *testing.T) {
 	p := NewProcessor(1, 1)
 	p.Run()
 
-	p.AddData(&MonitorData{DeviceId: 1, TimeStamp: strconv.Itoa(int(time.Now().Unix())*1000 - 50000)})
+	p.AddData(&MonitorData{DeviceId: 2, TimeStamp: strconv.Itoa(int(time.Now().Unix())*1000 - 50000)})
 
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, os.Interrupt)

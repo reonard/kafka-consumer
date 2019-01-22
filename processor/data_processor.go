@@ -55,7 +55,7 @@ func (w *Worker) UpsertData(collection string, query map[string]interface{}, set
 	defer s.Close()
 	c := s.DB("pilot").C(collection)
 
-	update := bson.M{"$set": set, "$setOnInsert": insert}
+	update := bson.M{"$set": set}
 
 	if _, err := c.Upsert(query, update); err != nil {
 		fmt.Println(err)
@@ -68,7 +68,7 @@ func (w *Worker) updateLastMonData(monData *MonitorData) {
 
 	w.UpsertData("last_metric",
 		map[string]interface{}{"deviceid": monData.DeviceId},
-		monData, monData)
+		monData, nil)
 
 }
 
