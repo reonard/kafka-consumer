@@ -104,7 +104,6 @@ func (w *Worker) processData(data ...*MonitorData) {
 		}
 
 		dt.Project = deviceInfo.Project
-		dt.Customer = deviceInfo.Customer
 
 		w.updateLastMonData(dt)
 		w.saveMonData(dt)
@@ -116,8 +115,8 @@ func (w *Worker) processData(data ...*MonitorData) {
 			continue
 		}
 		// 更新设备状态
-		err = db.ExecuteUpdate(
-			"UPDATE device SET device_status = ?, status_time = FROM_UNIXTIME(?) WHERE device_id = ? and status_time < FROM_UNIXTIME(?)",
+		err = db.ExecuteSQL(
+			"UPDATE t_device SET device_status = ?, status_time = FROM_UNIXTIME(?) WHERE device_id = ? and status_time < FROM_UNIXTIME(?)",
 			dt.DeviceStatus, unixTime/1000, dt.DeviceId, unixTime/1000)
 
 		if err != nil {
